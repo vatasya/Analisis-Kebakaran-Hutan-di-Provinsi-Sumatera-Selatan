@@ -1,1 +1,110 @@
+# SCRIPT GEE BAGIAN 2 --> KARHUTLA BULAN SEPTEMBER DI PROVINSI SUMATERA SELATAN TAHUN 2026
 
+// 1. DEFINE ROI
+var roi = ee.FeatureCollection('projects/ee-briliantnatasya/assets/Sumsel'); 
+
+// ==============================================================================
+// 2. DATA ACQUISITION & TIME-SERIES FILTERING
+// ==============================================================================
+// A. Data Historis Kualitas Udara & Titik Api September 2020
+var co2020 = ee.ImageCollection('COPERNICUS/S5P/OFFL/L3_CO')
+  .select('CO_column_number_density')
+  .filterBounds(roi).filterDate('2020-09-01', '2020-09-30')
+  .mean().clip(roi);
+
+var firms2020= ee.ImageCollection('FIRMS')
+  .filterBounds(roi).filterDate('2020-09-01', '2020-09-30')
+  .select('T21').max().clip(roi);
+
+// B. Data Terkini Kualitas Udara & Titik Api (Oktober 2026)
+var co2026 = ee.ImageCollection('COPERNICUS/S5P/NRTI/L3_CO')
+  .select('CO_column_number_density')
+  .filterBounds(roi).filterDate('2026-09-01', '2026-09-30')
+  .mean().clip(roi);
+
+var ai2026 = ee.ImageCollection('COPERNICUS/S5P/NRTI/L3_AER_AI')
+  .select('absorbing_aerosol_index')
+  .filterBounds(roi).filterDate('2026-09-01', '2026-09-30')
+  .mean().clip(roi);
+
+var no22026 = ee.ImageCollection('COPERNICUS/S5P/NRTI/L3_NO2')
+  .select('NO2_column_number_density')
+  .filterBounds(roi).filterDate('2026-09-01', '2026-09-30')
+  .mean().clip(roi);
+
+var hcho2026 = ee.ImageCollection('COPERNICUS/S5P/NRTI/L3_HCHO')
+  .select('tropospheric_HCHO_column_number_density')
+  .filterBounds(roi).filterDate('2026-09-01', '2026-09-30')
+  .mean().clip(roi);
+  
+var firms2026 = ee.ImageCollection('FIRMS')
+  .filterBounds(roi).filterDate('2026-09-01', '2026-09-30')
+  .select('T21').max().clip(roi);
+
+// C. Data Meteorologi ECMWF ERA5 (September 2026)
+var era5 = ee.ImageCollection("ECMWF/ERA5_LAND/DAILY_AGGR")
+  .filterBounds(roi).filterDate('2026-09-01', '2026-09-30').mean().clip(roi);
+
+var temp2m = era5.select('temperature_2m'); 
+var windU = era5.select('u_component_of_wind_10m'); 
+
+// ==============================================================================
+// 3. VISUALIZATION PARAMETERS
+// ==============================================================================
+var visCO   = {min: 0.02, max: 0.05, palette: ['black', 'blue', 'purple', 'cyan', 'green', 'yellow', 'red']};
+var visAI   = {min: 0.0, max: 2.0, palette: ['black', 'blue', 'purple', 'cyan', 'green', 'yellow', 'red']};
+var visNO2  = {min: 0.00005, max: 0.0002, palette: ['black', 'blue', 'purple', 'cyan', 'green', 'yellow', 'red']};
+var visHCHO = {min: 0.0001, max: 0.0003, palette: ['black', 'blue', 'purple', 'cyan', 'green', 'yellow', 'red']};
+var visTemp = {min: 295, max: 305, palette: ['blue', 'cyan', 'green', 'yellow', 'red']};
+var visWind = {min: -3, max: 3, palette: ['blue', 'white', 'red']}; 
+var visFirms = {min: 300, max: 400, palette: ['red', 'orange', 'yellow']};
+
+var outline = ee.Image().byte().paint({featureCollection: roi, color: 1, width: 2});
+
+// ==============================================================================
+// 4. USER INTERFACE (SPLIT PANEL) - ALL LAYERS AVAILABLE
+// ==============================================================================
+var leftMap = ui.Map();
+leftMap.centerObject(roi, 7); 
+leftMap.setOptions('HYBRID'); 
+
+var rightMap = ui.Map();
+rightMap.setOptions('HYBRID');
+
+// --- PANEL KIRI (LEFT PANEL) ---
+// Default: CO 2020 dan Titik Api 2020 menyala
+leftMap.addLayer(co2020, visCO, '0. CO September 2020', true);       
+leftMap.addLayer(co2026, visCO, '1. CO September 2026', false);      
+leftMap.addLayer(ai2026, visAI, '2. Kabut Asap (AI) 2026', false);
+leftMap.addLayer(no22026, visNO2, '3. Gas Beracun NO2 2026', false);        
+leftMap.addLayer(hcho2026, visHCHO, '4. Gas HCHO 2026', false); 
+leftMap.addLayer(temp2m, visTemp, '5. Temperatur Permukaan (ERA5)', false);
+leftMap.addLayer(windU, visWind, '6. Kecepatan Angin U (ERA5)', false);
+leftMap.addLayer(firms2020, visFirms, '7. Titik Api (FIRMS) 2020', true); 
+leftMap.addLayer(firms2026, visFirms, '8. Titik Api (FIRMS) 2026', false); 
+leftMap.addLayer(outline, {palette: 'black'}, 'Batas Sumatera Selatan', true);
+
+// --- PANEL KANAN (RIGHT PANEL) ---
+// Default: CO 2026 dan Titik Api 2026 menyala
+rightMap.addLayer(co2020, visCO, '0. CO September 2020', false);       
+rightMap.addLayer(co2026, visCO, '1. CO September 2026', true);      
+rightMap.addLayer(ai2026, visAI, '2. Kabut Asap (AI) 2026', false);
+rightMap.addLayer(no22026, visNO2, '3. Gas Beracun NO2 2026', false);        
+rightMap.addLayer(hcho2026, visHCHO, '4. Gas HCHO 2026', false); 
+rightMap.addLayer(temp2m, visTemp, '5. Temperatur Permukaan (ERA5)', false);
+rightMap.addLayer(windU, visWind, '6. Kecepatan Angin U (ERA5)', false);
+rightMap.addLayer(firms2020, visFirms, '7. Titik Api (FIRMS) 2020', false); 
+rightMap.addLayer(firms2026, visFirms, '8. Titik Api (FIRMS) 2026', true); 
+rightMap.addLayer(outline, {palette: 'black'}, 'Batas Sumatera Selatan', true);
+
+// Menghubungkan kedua peta
+var linker = ui.Map.Linker([leftMap, rightMap]);
+var splitPanel = ui.SplitPanel({
+  firstPanel: leftMap, 
+  secondPanel: rightMap,
+  wipe: true, 
+  style: {stretch: 'both'}
+});
+
+// Mereset antarmuka bawaan GEE dan menggantinya dengan Split Panel
+ui.root.widgets().reset([splitPanel]);
